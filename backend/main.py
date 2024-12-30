@@ -1,6 +1,4 @@
-from urllib import request
-
-from flask import  Flask
+from flask import  Flask, request
 from flask_restx import Api, Resource, fields
 from config import DevelopmentConfig
 from models import  Recipe
@@ -30,33 +28,52 @@ class HelloResource(Resource):
 
 @api.route('/recipes')
 class RecipesResource(Resource):
+
+    @api.marshal_list_with(recipe_model)  # helps convert the sqlalchemy object (recipe to a jason string)
     def get(self):
         """"Get all recipes"""
         recipes = Recipe.query.all()
-        return {'recipes': recipes}
+        return recipes
 
+    @api.marshal_with(recipe_model)
     def post(self):
         """Add a new recipe"""
         data = request.get_json()
-        recipe = Recipe(**data)
-        db.session.add(recipe)
-        db.session.commit()
-        return {'message': 'Recipe added!'}, 201
+        new_recipe = Recipe(
+            title=data.get('title'),
+            description=data.get('description'),
+        )
+
+        new_recipe.save()
+        return new_recipe, 201
 
 @api.route('/recipes/<int:recipe_id>')
 class RecipeResource(Resource):
+
+    @api.marshal_with(recipe_model)
     def get(self, recipe_id):
         """Get a specific recipe"""
-        recipe = Recipe.query.get(recipe_id)
-        return {'recipe': recipe}
+        recipe = Recipe.query.get_or_404(recipe_id)
+        return recipe, 200
 
+    @api.marshal_with(recipe_model)
     def put(self, recipe_id):
         """Update a recipe"""
-        pass
+        recipe_to_update = Recipe.query.get_or_404(recipe_id)
+        data = request.get_json()
+        recipe_to_update.update(data.get('title'), data.get('description'))
+        return recipe_to_update, 200
 
     def delete(self, recipe_id):
         """Delete a recipe"""
-        pass
+
+        try:
+            recipe = Recipe.query.get_or_404(recipe_id)
+            recipe.delete()
+        except Exception as e:
+            return f"An error occurred while trying to delete recipe with id: {recipe_id}. Error: {str(e)}", 500
+
+        return f"Recipe with id {recipe_id} has been deleted", 200
 
 
 
