@@ -1,0 +1,1 @@
+Setup the frontend with reactJs and a blank canvas
